@@ -120,15 +120,25 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
         }
 
         let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipped: false) { rect in
-            base.isTemplate = true
-            base.draw(in: NSRect(x: 0, y: 1, width: 15, height: 15))
+        let image = NSImage(size: size, flipped: false) { [weak button] rect in
+            let isDark = button?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let shieldColor = isDark ? NSColor.white : NSColor(white: 0.15, alpha: 1.0)
+            let config = NSImage.SymbolConfiguration(paletteColors: [shieldColor])
+            let tinted = base.withSymbolConfiguration(config) ?? base
 
-            // Bright green dot indicating stream active
-            let dotRect = NSRect(x: 11, y: 1, width: 5.5, height: 5.5)
+            tinted.draw(in: NSRect(x: 0, y: 1.5, width: 15, height: 15))
+
+            // Contrast knockout border around dot
+            let dotRect = NSRect(x: 11, y: 0.5, width: 6, height: 6)
+            let knockoutRect = dotRect.insetBy(dx: -0.75, dy: -0.75)
+            (isDark ? NSColor(white: 0.05, alpha: 1.0) : NSColor.white).setFill()
+            NSBezierPath(ovalIn: knockoutRect).fill()
+
+            // Bright green live indicator dot
             NSColor.systemGreen.setFill()
             let path = NSBezierPath(ovalIn: dotRect)
             path.fill()
+
             return true
         }
         image.isTemplate = false
