@@ -45,6 +45,15 @@ public struct StreamSettings: Codable, Sendable, Equatable {
         self.failClosedBlanking = failClosedBlanking
         self.excludeNotificationCenter = excludeNotificationCenter
     }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.targetFPS = try container.decodeIfPresent(Int.self, forKey: .targetFPS) ?? 30
+        self.showCursor = try container.decodeIfPresent(Bool.self, forKey: .showCursor) ?? true
+        self.selectedDisplayID = try container.decodeIfPresent(UInt32.self, forKey: .selectedDisplayID)
+        self.failClosedBlanking = try container.decodeIfPresent(Bool.self, forKey: .failClosedBlanking) ?? true
+        self.excludeNotificationCenter = try container.decodeIfPresent(Bool.self, forKey: .excludeNotificationCenter) ?? true
+    }
 }
 
 public struct UIPreferences: Codable, Sendable, Equatable {

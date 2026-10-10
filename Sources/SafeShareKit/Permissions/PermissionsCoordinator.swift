@@ -24,6 +24,7 @@ public final class PermissionsCoordinator: ObservableObject, PermissionsCoordina
     public func refreshPermissionStatus() {
         let granted = CGPreflightScreenCaptureAccess()
         if granted != hasScreenRecordingPermission {
+            print("[PermissionsCoordinator] Permission status changed from \(hasScreenRecordingPermission) to \(granted)")
             hasScreenRecordingPermission = granted
         }
     }

@@ -106,8 +106,10 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             let snapshot = try await scanner.refresh()
             self.applicationGroups = resolver.resolve(snapshot: snapshot, selfPID: selfPID)
             statusMessage = "Discovered \(applicationGroups.count) running apps"
+            print("[AppStateCoordinator] Discovered \(applicationGroups.count) apps on \(snapshot.displays.count) display(s)")
         } catch {
             statusMessage = "Scan error: \(error.localizedDescription)"
+            print("[AppStateCoordinator] Scan error: \(error)")
         }
     }
 
