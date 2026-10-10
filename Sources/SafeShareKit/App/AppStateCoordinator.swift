@@ -11,6 +11,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     @Published public private(set) var frameCount: Int = 0
     @Published public private(set) var applicationGroups: [ApplicationGroup] = []
     @Published public private(set) var isSafeViewWindowOpen: Bool = false
+    @Published public private(set) var hasScreenRecordingPermission: Bool = false
 
     public let permissions: PermissionsCoordinator
     public let scanner: AppScanner
@@ -69,12 +70,17 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             }
             .store(in: &cancellables)
 
+        self.hasScreenRecordingPermission = perm.hasScreenRecordingPermission
+
         // Automatically scan when Screen Recording permission is granted
         self.permissions.$hasScreenRecordingPermission
-            .filter { $0 }
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    await self?.refreshApps()
+            .sink { [weak self] granted in
+                guard let self = self else { return }
+                self.hasScreenRecordingPermission = granted
+                if granted {
+                    Task { @MainActor in
+                        await self.refreshApps()
+                    }
                 }
             }
             .store(in: &cancellables)

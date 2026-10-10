@@ -69,13 +69,34 @@ public struct MenuBarExtraView: View {
 
             // Stream Controls
             VStack(spacing: 8) {
-                if !coordinator.permissions.hasScreenRecordingPermission {
-                    Button(action: { coordinator.permissions.requestScreenRecordingPermission() }) {
-                        Label("Grant Screen Recording Permission", systemImage: "lock.shield")
-                            .frame(maxWidth: .infinity)
+                if !coordinator.hasScreenRecordingPermission {
+                    VStack(spacing: 6) {
+                        Button(action: { coordinator.permissions.requestScreenRecordingPermission() }) {
+                            Label("Open Screen Recording Settings", systemImage: "lock.shield")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                coordinator.permissions.refreshPermissionStatus()
+                                Task { await coordinator.refreshApps() }
+                            }) {
+                                Label("Check Again", systemImage: "arrow.clockwise")
+                                    .font(.system(size: 10))
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button(action: {
+                                relaunchApp()
+                            }) {
+                                Label("Relaunch SafeShare", systemImage: "arrow.triangle.2.circlepath")
+                                    .font(.system(size: 10))
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
                 } else {
                     HStack(spacing: 8) {
                         if !coordinator.isCapturing {
@@ -233,5 +254,14 @@ public struct MenuBarExtraView: View {
         .sheet(isPresented: $isShowingSettings) {
             SettingsView(ruleStore: coordinator.ruleStore)
         }
+    }
+
+    private func relaunchApp() {
+        let bundleURL = Bundle.main.bundleURL
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = ["-n", bundleURL.path]
+        try? task.run()
+        NSApplication.shared.terminate(nil)
     }
 }

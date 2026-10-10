@@ -55,7 +55,7 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
 EOF
 
 echo "==> Performing ad-hoc code signature..."
-codesign --force --deep --sign - "${APP_DIR}"
+codesign --force --deep --sign - --identifier "com.safeshare.app" "${APP_DIR}"
 
 echo "==> Successfully created ${APP_DIR}!"
 echo "Run via: open ${APP_DIR}"

@@ -39,7 +39,7 @@ public final class AppScanner: ObservableObject, AppScanning {
             return empty
         }
 
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
         
         let validApps = content.applications
             .filter { $0.processID != selfPID && !$0.applicationName.isEmpty && !$0.bundleIdentifier.isEmpty }
