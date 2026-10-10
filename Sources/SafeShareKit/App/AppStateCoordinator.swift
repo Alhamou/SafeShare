@@ -148,24 +148,29 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             return
         }
 
-        var snapshot = scanner.currentSnapshot
-        if snapshot == nil {
-            snapshot = try? await scanner.refresh()
+        // 1. Show the Safe View window first so WindowServer registers its presence
+        outputSurface.showSafeView()
+        self.isSafeViewWindowOpen = true
+
+        // 2. Perform a fresh scan with the window open so SCShareableContent contains SafeShare
+        let activeSnapshot: ShareableSnapshot
+        do {
+            activeSnapshot = try await scanner.refresh()
+            self.applicationGroups = resolver.resolve(snapshot: activeSnapshot, selfPID: selfPID)
+        } catch {
+            statusMessage = "Failed to scan windows: \(error.localizedDescription)"
+            return
         }
 
-        guard let validSnapshot = snapshot,
-              let display = validSnapshot.displays.first else {
+        guard let display = activeSnapshot.displays.first else {
             statusMessage = "No display available for capture."
             return
         }
 
         do {
-            outputSurface.showSafeView()
-            self.isSafeViewWindowOpen = true
-
             let filter = try filterBuilder.buildFilter(
                 for: display,
-                snapshot: validSnapshot,
+                snapshot: activeSnapshot,
                 rules: ruleStore,
                 selfPID: selfPID
             )

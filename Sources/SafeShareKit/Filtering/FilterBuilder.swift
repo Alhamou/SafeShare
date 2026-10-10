@@ -24,9 +24,23 @@ public final class FilterBuilder: FilterBuilding {
         var excludingApps: [SCRunningApplication] = []
         var exceptingWindows: [SCWindow] = []
 
+        let isSelfApp: (SCRunningApplication) -> Bool = { app in
+            if app.processID == selfPID { return true }
+            if let bundleID = Bundle.main.bundleIdentifier, !bundleID.isEmpty, app.bundleIdentifier == bundleID { return true }
+            if app.bundleIdentifier == "com.safeshare.app" { return true }
+            return false
+        }
+
         // 1. Mandatory Self-Exclusion: Exclude SafeShare to prevent recursive mirroring
-        if let selfApp = snapshot.applications.first(where: { $0.processID == selfPID }) {
+        var selfApp = snapshot.applications.first(where: { isSelfApp($0) })
+        if selfApp == nil {
+            selfApp = snapshot.windows.compactMap { $0.owningApplication }.first(where: { isSelfApp($0) })
+        }
+        if let selfApp = selfApp {
             excludingApps.append(selfApp)
+            print("[FilterBuilder] Successfully excluded SafeShare (PID: \(selfApp.processID), Bundle: \(selfApp.bundleIdentifier)) from capture stream.")
+        } else {
+            print("[FilterBuilder] CRITICAL WARNING: SafeShare self-app not found in snapshot (Total apps: \(snapshot.applications.count), Total windows: \(snapshot.windows.count))")
         }
 
         // 1b. Exclude Notification Center if configured to prevent message leaks
@@ -36,7 +50,7 @@ public final class FilterBuilder: FilterBuilding {
         }
 
         // 2. Resolve rules for all other applications
-        for app in snapshot.applications where app.processID != selfPID {
+        for app in snapshot.applications where !isSelfApp(app) {
             let bundleID = app.bundleIdentifier
             let appState = rules.effectiveState(for: bundleID, pid: app.processID, windowID: nil)
             let appWindows = snapshot.windows.filter { $0.owningApplication?.processID == app.processID }
