@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import CoreGraphics
 import Combine
 
@@ -31,7 +32,16 @@ public final class PermissionsCoordinator: ObservableObject, PermissionsCoordina
     public func requestScreenRecordingPermission() -> Bool {
         let granted = CGRequestScreenCaptureAccess()
         hasScreenRecordingPermission = granted
+        if !granted {
+            openSystemSettingsScreenRecording()
+        }
         return granted
+    }
+
+    public func openSystemSettingsScreenRecording() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func startPeriodicCheck() {

@@ -69,9 +69,23 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             }
             .store(in: &cancellables)
 
-        // Start scanning running apps
-        Task {
-            await self.refreshApps()
+        // Automatically scan when Screen Recording permission is granted
+        self.permissions.$hasScreenRecordingPermission
+            .filter { $0 }
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.refreshApps()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Start scanning running apps only if permission already exists
+        if self.permissions.hasScreenRecordingPermission {
+            Task {
+                await self.refreshApps()
+            }
+        } else {
+            self.statusMessage = "Screen Recording permission needed to discover windows."
         }
 
         // Start monitoring workspace changes (app launch/exit)
@@ -83,6 +97,11 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     }
 
     public func refreshApps() async {
+        guard permissions.hasScreenRecordingPermission else {
+            statusMessage = "Screen Recording permission needed to discover windows."
+            return
+        }
+
         do {
             let snapshot = try await scanner.refresh()
             self.applicationGroups = resolver.resolve(snapshot: snapshot, selfPID: selfPID)

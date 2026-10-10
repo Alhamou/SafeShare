@@ -30,6 +30,15 @@ public final class AppScanner: ObservableObject, AppScanning {
 
     @discardableResult
     public func refresh() async throws -> ShareableSnapshot {
+        guard CGPreflightScreenCaptureAccess() else {
+            // Do not call SCShareableContent if permission is not granted yet to prevent system dialog loops
+            let empty = ShareableSnapshot(displays: [], applications: [], windows: [])
+            self.currentSnapshot = empty
+            self.displays = []
+            self.runningApplications = []
+            return empty
+        }
+
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         
         let validApps = content.applications
@@ -56,10 +65,7 @@ public final class AppScanner: ObservableObject, AppScanning {
         let center = NSWorkspace.shared.notificationCenter
         let notifications: [Notification.Name] = [
             NSWorkspace.didLaunchApplicationNotification,
-            NSWorkspace.didTerminateApplicationNotification,
-            NSWorkspace.didActivateApplicationNotification,
-            NSWorkspace.didHideApplicationNotification,
-            NSWorkspace.didUnhideApplicationNotification
+            NSWorkspace.didTerminateApplicationNotification
         ]
 
         for name in notifications {
