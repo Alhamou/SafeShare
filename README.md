@@ -1,11 +1,19 @@
-# SafeShare (ScreenGuard) 🛡️
+<p align="center">
+  <img src="Resources/AppIcon.png" alt="SafeShare App Icon" width="160" height="160" />
+</p>
 
-[![CI](https://github.com/Alhamou/SafeShare/actions/workflows/ci.yml/badge.svg)](https://github.com/Alhamou/SafeShare/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform: macOS 14+](https://img.shields.io/badge/Platform-macOS%2014%2B%20(Sonoma%2FSequoia)-black.svg?logo=apple)](https://apple.com)
-[![Privacy: 100% Offline](https://img.shields.io/badge/Privacy-100%25%20Offline-success.svg)](#privacy--security-guarantee)
+<h1 align="center">SafeShare (ScreenGuard) 🛡️</h1>
 
-> **A lightweight, open-source macOS utility that hides confidential apps, instances, and windows during screen sharing in Microsoft Teams, Zoom, and Google Meet.**
+<p align="center">
+  <a href="https://github.com/Alhamou/SafeShare/actions"><img src="https://github.com/Alhamou/SafeShare/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+  <a href="https://apple.com"><img src="https://img.shields.io/badge/Platform-macOS%2014%2B%20(Sonoma%2FSequoia)-black.svg?logo=apple" alt="Platform: macOS 14+" /></a>
+  <a href="#privacy--security-guarantee"><img src="https://img.shields.io/badge/Privacy-100%25%20Offline-success.svg" alt="Privacy: 100% Offline" /></a>
+</p>
+
+<p align="center">
+  <strong>A lightweight, open-source macOS utility that hides confidential apps, instances, and windows during screen sharing in Microsoft Teams, Zoom, and Google Meet.</strong>
+</p>
 
 ---
 
