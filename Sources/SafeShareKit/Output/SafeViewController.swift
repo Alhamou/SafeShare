@@ -6,7 +6,7 @@ public final class SafeViewController: NSObject, NSWindowDelegate, OutputSurfaci
     private var window: NSWindow?
     private let layerWrapper = SafeViewDisplayLayerWrapper()
     private var hostingView: SafeViewHostingNSView?
-    private var onClose: (@MainActor () -> Void)?
+    public var onClose: (@MainActor () -> Void)?
 
     public var isVisible: Bool {
         window?.isVisible ?? false

@@ -65,6 +65,9 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
 
         self.captureEngine.delegate = self
         self.watchdog.delegate = self
+        self.outputSurface.onClose = { [weak self] in
+            self?.isSafeViewWindowOpen = false
+        }
 
         // Forward RuleStore mutations to update active stream
         self.ruleStore.objectWillChange

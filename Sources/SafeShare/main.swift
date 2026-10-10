@@ -9,6 +9,7 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
     private var popover: NSPopover?
     private var coordinator: AppStateCoordinator?
     private var globalEventMonitor: Any?
+    private var isClosingPopover: Bool = false
 
     static func main() {
         let app = NSApplication.shared
@@ -28,6 +29,9 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
         let popover = NSPopover()
         popover.contentSize = NSSize(width: 380, height: 520)
         popover.behavior = .transient
+        // Disable internal AppKit window transform animations to prevent use-after-free
+        // crashes (_NSWindowTransformAnimation dealloc) when clicking other windows.
+        popover.animates = false
         popover.delegate = self
         popover.contentViewController = NSHostingController(
             rootView: MenuBarExtraView(coordinator: coordinator)
@@ -43,7 +47,7 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
         }
         self.statusItem = statusItem
 
-        // Automatically close when application resigns active
+        // Automatically close popover when application resigns active
         NotificationCenter.default.addObserver(
             forName: NSApplication.didResignActiveNotification,
             object: nil,
@@ -53,6 +57,11 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
                 self?.closePopover()
             }
         }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // Keep the menu bar app running even if the Safe View window is closed
+        return false
     }
 
     @objc private func togglePopover(_ sender: AnyObject?) {
@@ -67,16 +76,14 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
 
     private func showPopover(_ button: NSStatusBarButton) {
         guard let popover = popover else { return }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
 
         // Remove any previous monitor
-        if let monitor = globalEventMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalEventMonitor = nil
-        }
+        removeGlobalMonitor()
 
-        // Install global monitor: close as soon as user clicks anywhere outside
+        // Show popover cleanly without manually overriding key-window state
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+
+        // Install global monitor: dismiss cleanly when user clicks anywhere outside
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.closePopover()
@@ -85,9 +92,16 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
     }
 
     private func closePopover() {
-        guard let popover = popover, popover.isShown else { return }
-        popover.performClose(nil)
+        guard let popover = popover, popover.isShown, !isClosingPopover else { return }
+        isClosingPopover = true
+        defer { isClosingPopover = false }
+
+        removeGlobalMonitor()
         coordinator?.resetNavigationState()
+        popover.close()
+    }
+
+    private func removeGlobalMonitor() {
         if let monitor = globalEventMonitor {
             NSEvent.removeMonitor(monitor)
             globalEventMonitor = nil
@@ -96,10 +110,7 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
 
     // MARK: - NSPopoverDelegate
     func popoverDidClose(_ notification: Notification) {
+        removeGlobalMonitor()
         coordinator?.resetNavigationState()
-        if let monitor = globalEventMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalEventMonitor = nil
-        }
     }
 }
