@@ -2,7 +2,7 @@
   <img src="Resources/AppIcon.png" alt="SafeShare App Icon" width="160" height="160" />
 </p>
 
-<h1 align="center">SafeShare (ScreenGuard) 🛡️</h1>
+<h1 align="center">SafeShare (ScreenGuard)</h1>
 
 <p align="center">
   <a href="https://github.com/Alhamou/SafeShare/actions"><img src="https://github.com/Alhamou/SafeShare/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
