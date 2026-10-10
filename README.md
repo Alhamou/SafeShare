@@ -55,6 +55,12 @@ SafeShare solves this with a **hardware-filtered desktop preview stream** called
         Microsoft Teams / Zoom / Google Meet Stream
 ```
 
+<p align="center">
+  <img src="Resources/how-it-works.png" alt="SafeShare in Action - Live Privacy Filtering" width="100%" />
+</p>
+
+> **How it works in practice**: In the demonstration above, the presenter has a private app open on their physical screen (*TopMovies* on the left). Inside the active **Safe View** window (the stream shared with Teams, Zoom, or Google Meet), SafeShare strips away the confidential application in hardware via `ScreenCaptureKit`. Meeting attendees see only the sanitized desktop, while the presenter works normally. The live green dot on the menu bar icon confirms active, protected streaming.
+
 ---
 
 ## ✨ Features
