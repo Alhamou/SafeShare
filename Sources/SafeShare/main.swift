@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 import SafeShareKit
 
 @main
@@ -10,6 +11,7 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
     private var coordinator: AppStateCoordinator?
     private var globalEventMonitor: Any?
     private var isClosingPopover: Bool = false
+    private var cancellables = Set<AnyCancellable>()
 
     static func main() {
         let app = NSApplication.shared
@@ -46,6 +48,14 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
             button.target = self
         }
         self.statusItem = statusItem
+
+        // Dynamically update menu bar icon with green indicator when stream is active
+        coordinator.$isCapturing
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isCapturing in
+                self?.updateStatusIcon(isCapturing: isCapturing)
+            }
+            .store(in: &cancellables)
 
         // Automatically close popover when application resigns active
         NotificationCenter.default.addObserver(
@@ -89,6 +99,32 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
                 self?.closePopover()
             }
         }
+    }
+
+    private func updateStatusIcon(isCapturing: Bool) {
+        guard let button = statusItem?.button else { return }
+        guard let base = NSImage(systemSymbolName: "shield.checkered", accessibilityDescription: isCapturing ? "SafeShare (Streaming)" : "SafeShare") else { return }
+
+        if !isCapturing {
+            base.isTemplate = true
+            button.image = base
+            return
+        }
+
+        let size = NSSize(width: 18, height: 18)
+        let image = NSImage(size: size, flipped: false) { rect in
+            base.isTemplate = true
+            base.draw(in: NSRect(x: 0, y: 1, width: 15, height: 15))
+
+            // Bright green dot indicating stream active
+            let dotRect = NSRect(x: 11, y: 1, width: 5.5, height: 5.5)
+            NSColor.systemGreen.setFill()
+            let path = NSBezierPath(ovalIn: dotRect)
+            path.fill()
+            return true
+        }
+        image.isTemplate = false
+        button.image = image
     }
 
     private func closePopover() {

@@ -45,9 +45,22 @@ public struct MenuBarExtraView: View {
         VStack(spacing: 0) {
             // Header
             HStack(spacing: 8) {
-                Image(systemName: "shield.checkered")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.purple)
+                ZStack(alignment: .bottomTrailing) {
+                    Image(systemName: "shield.checkered")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.purple)
+
+                    if coordinator.isCapturing {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color(NSColor.windowBackgroundColor), lineWidth: 1.5)
+                            )
+                            .offset(x: 2, y: 2)
+                    }
+                }
                 Text("SafeShare")
                     .font(.system(size: 14, weight: .bold))
 
