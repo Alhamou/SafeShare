@@ -82,6 +82,8 @@ public struct ApplicationRowView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(isProtected ? .purple : .secondary)
+                .accessibilityLabel("\(appGroup.displayName): \(isProtected ? "Protected" : "Visible")")
+                .accessibilityHint("Click to \(isProtected ? "unprotect and make visible in stream" : "protect and hide from stream")")
             }
             .padding(.vertical, 2)
 

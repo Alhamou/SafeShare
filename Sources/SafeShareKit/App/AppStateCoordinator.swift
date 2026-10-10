@@ -65,7 +65,11 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         self.ruleStore.objectWillChange
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
-                    await self?.syncActiveFilter()
+                    guard let self = self else { return }
+                    if self.isCapturing {
+                        await self.syncActiveFilter()
+                        await self.syncActiveConfiguration()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -141,6 +145,27 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         }
     }
 
+    public var activeDisplay: SCDisplay? {
+        guard let snapshot = scanner.currentSnapshot else { return nil }
+        if let chosenID = ruleStore.config.streamSettings.selectedDisplayID,
+           let matched = snapshot.displays.first(where: { $0.displayID == chosenID }) {
+            return matched
+        }
+        return snapshot.displays.first
+    }
+
+    public func setTargetDisplay(displayID: UInt32) {
+        var settings = ruleStore.config.streamSettings
+        settings.selectedDisplayID = displayID
+        ruleStore.updateStreamSettings(settings)
+        if isCapturing {
+            Task {
+                await self.syncActiveFilter()
+                await self.syncActiveConfiguration()
+            }
+        }
+    }
+
     public func startSafeView() async {
         guard permissions.hasScreenRecordingPermission else {
             statusMessage = "Screen Recording permission required."
@@ -162,7 +187,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             return
         }
 
-        guard let display = activeSnapshot.displays.first else {
+        guard let display = activeDisplay else {
             statusMessage = "No display available for capture."
             return
         }
@@ -186,7 +211,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
 
             try await captureEngine.startCapture(display: display, filter: filter, config: config)
             self.isCapturing = true
-            self.statusMessage = "Safe View live at \(targetFPS) FPS (Hardware Filter Active)"
+            self.statusMessage = "Safe View live on Display \(display.displayID) at \(targetFPS) FPS"
         } catch {
             self.statusMessage = "Failed to start Safe View: \(error.localizedDescription)"
         }
@@ -213,7 +238,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     private func syncActiveFilter() async {
         guard isCapturing,
               let snapshot = scanner.currentSnapshot,
-              let display = snapshot.displays.first else { return }
+              let display = activeDisplay else { return }
 
         do {
             let newFilter = try filterBuilder.buildFilter(
@@ -225,6 +250,26 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             try await captureEngine.updateFilter(newFilter)
         } catch {
             print("[AppStateCoordinator] Failed to sync filter: \(error)")
+        }
+    }
+
+    public func syncActiveConfiguration() async {
+        guard isCapturing,
+              let display = activeDisplay else { return }
+
+        let targetFPS = ruleStore.config.streamSettings.targetFPS
+        let showCursor = ruleStore.config.streamSettings.showCursor
+        let config = CaptureConfiguration(
+            width: display.width,
+            height: display.height,
+            targetFPS: targetFPS,
+            showsCursor: showCursor
+        )
+        do {
+            try await captureEngine.updateConfiguration(config)
+            print("[AppStateCoordinator] Successfully synced stream configuration (FPS: \(targetFPS), Cursor: \(showCursor))")
+        } catch {
+            print("[AppStateCoordinator] Failed to sync stream configuration: \(error)")
         }
     }
 

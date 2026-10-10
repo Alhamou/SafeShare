@@ -59,7 +59,9 @@ public struct MenuBarExtraView: View {
                         .font(.system(size: 12))
                 }
                 .buttonStyle(.plain)
-                .help("Settings")
+                .keyboardShortcut(",", modifiers: [.command])
+                .help("Settings (⌘,)")
+                .accessibilityLabel("Open Preferences")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -108,6 +110,9 @@ public struct MenuBarExtraView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.green)
+                            .keyboardShortcut("s", modifiers: [.command, .shift])
+                            .accessibilityLabel("Start Safe View streaming")
+                            .accessibilityHint("Starts hardware-filtered screen capture in a dedicated window. Shortcut: Command Shift S")
                         } else {
                             Button(action: {
                                 Task { await coordinator.stopSafeView() }
@@ -117,6 +122,9 @@ public struct MenuBarExtraView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.red)
+                            .keyboardShortcut("s", modifiers: [.command, .shift])
+                            .accessibilityLabel("Stop Safe View streaming")
+                            .accessibilityHint("Stops active screen capture. Shortcut: Command Shift S")
 
                             Button(action: {
                                 coordinator.focusSafeViewWindow()
@@ -125,6 +133,7 @@ public struct MenuBarExtraView: View {
                             }
                             .buttonStyle(.bordered)
                             .help("Bring Safe View window to front")
+                            .accessibilityLabel("Focus Safe View window")
                         }
                     }
                 }
@@ -235,9 +244,16 @@ public struct MenuBarExtraView: View {
 
             // Footer / Instructions
             HStack {
-                Text("Select 'Safe View' window in Teams to share")
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Select 'Safe View' window in Teams to share")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                    if let d = coordinator.activeDisplay {
+                        Text("Display \(d.displayID): \(d.width)×\(d.height)")
+                            .font(.system(size: 8))
+                            .foregroundColor(.purple)
+                    }
+                }
                 Spacer()
                 Button("Quit") {
                     NSApplication.shared.terminate(nil)
@@ -245,6 +261,8 @@ public struct MenuBarExtraView: View {
                 .buttonStyle(.plain)
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
+                .keyboardShortcut("q", modifiers: [.command])
+                .accessibilityLabel("Quit SafeShare")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -252,7 +270,7 @@ public struct MenuBarExtraView: View {
         }
         .frame(width: 360)
         .sheet(isPresented: $isShowingSettings) {
-            SettingsView(ruleStore: coordinator.ruleStore)
+            SettingsView(coordinator: coordinator)
         }
     }
 

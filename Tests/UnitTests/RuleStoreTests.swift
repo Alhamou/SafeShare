@@ -84,4 +84,33 @@ final class RuleStoreTests: XCTestCase {
         XCTAssertFalse(store.isApplicationProtected(bundleID: "com.tinyspeck.slackmacgap"))
         XCTAssertEqual(store.windowOverride(for: 44), .inherit)
     }
+
+    func testStreamSettingsPersistence() {
+        let store = RuleStore(persistence: persistence)
+        let settings = StreamSettings(
+            targetFPS: 60,
+            showCursor: false,
+            selectedDisplayID: 12345,
+            failClosedBlanking: true,
+            excludeNotificationCenter: true
+        )
+        store.updateStreamSettings(settings)
+
+        let reloaded = RuleStore(persistence: persistence)
+        XCTAssertEqual(reloaded.config.streamSettings.targetFPS, 60)
+        XCTAssertFalse(reloaded.config.streamSettings.showCursor)
+        XCTAssertEqual(reloaded.config.streamSettings.selectedDisplayID, 12345)
+        XCTAssertTrue(reloaded.config.streamSettings.failClosedBlanking)
+        XCTAssertTrue(reloaded.config.streamSettings.excludeNotificationCenter)
+    }
+
+    func testUIPreferencesPersistence() {
+        let store = RuleStore(persistence: persistence)
+        let prefs = UIPreferences(launchAtLogin: true, theme: "dark")
+        store.updateUIPreferences(prefs)
+
+        let reloaded = RuleStore(persistence: persistence)
+        XCTAssertTrue(reloaded.config.uiPreferences.launchAtLogin)
+        XCTAssertEqual(reloaded.config.uiPreferences.theme, "dark")
+    }
 }
