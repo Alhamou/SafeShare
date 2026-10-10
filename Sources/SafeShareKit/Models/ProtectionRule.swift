@@ -30,12 +30,20 @@ public struct StreamSettings: Codable, Sendable, Equatable {
     public var showCursor: Bool
     public var selectedDisplayID: UInt32?
     public var failClosedBlanking: Bool
+    public var excludeNotificationCenter: Bool
 
-    public init(targetFPS: Int = 30, showCursor: Bool = true, selectedDisplayID: UInt32? = nil, failClosedBlanking: Bool = true) {
+    public init(
+        targetFPS: Int = 30,
+        showCursor: Bool = true,
+        selectedDisplayID: UInt32? = nil,
+        failClosedBlanking: Bool = true,
+        excludeNotificationCenter: Bool = true
+    ) {
         self.targetFPS = targetFPS
         self.showCursor = showCursor
         self.selectedDisplayID = selectedDisplayID
         self.failClosedBlanking = failClosedBlanking
+        self.excludeNotificationCenter = excludeNotificationCenter
     }
 }
 

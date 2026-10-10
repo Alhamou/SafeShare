@@ -4,7 +4,7 @@ import CoreMedia
 import Combine
 
 @MainActor
-public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngineDelegate {
+public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngineDelegate, ScreenWatchdogDelegate {
     @Published public private(set) var isCapturing: Bool = false
     @Published public private(set) var statusMessage: String = "Ready"
     @Published public private(set) var fps: Double = 0.0
@@ -19,6 +19,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     public let filterBuilder: FilterBuilder
     public let captureEngine: CaptureEngine
     public let outputSurface: SafeViewController
+    public let watchdog: ScreenWatchdog
 
     private var cancellables = Set<AnyCancellable>()
     private var lastFPSUpdateTime = Date()
@@ -33,6 +34,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         filterBuilder: FilterBuilder? = nil,
         captureEngine: CaptureEngine? = nil,
         outputSurface: SafeViewController? = nil,
+        watchdog: ScreenWatchdog? = nil,
         selfPID: pid_t = ProcessInfo.processInfo.processIdentifier
     ) {
         let perm = permissions ?? PermissionsCoordinator()
@@ -42,6 +44,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         let fb = filterBuilder ?? FilterBuilder()
         let engine = captureEngine ?? CaptureEngine()
         let surface = outputSurface ?? SafeViewController()
+        let dog = watchdog ?? ScreenWatchdog()
 
         self.permissions = perm
         self.scanner = scan
@@ -50,10 +53,12 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         self.filterBuilder = fb
         self.captureEngine = engine
         self.outputSurface = surface
+        self.watchdog = dog
         self.selfPID = selfPID
         super.init()
 
         self.captureEngine.delegate = self
+        self.watchdog.delegate = self
 
         // Forward RuleStore mutations to update active stream
         self.ruleStore.objectWillChange
@@ -222,6 +227,40 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     public nonisolated func captureEngineNeedsPrivacyBlanking(_ engine: CaptureEngining) {
         DispatchQueue.main.async { [weak self] in
             self?.outputSurface.blankOutput(reason: .filterTransition)
+        }
+    }
+
+    // MARK: - ScreenWatchdogDelegate
+    public func screenWatchdogDidDetectScreenSleep() {
+        if isCapturing {
+            outputSurface.blankOutput(reason: .screenLocked)
+        }
+    }
+
+    public func screenWatchdogDidDetectScreenWake() {
+        if isCapturing {
+            outputSurface.unblankOutput()
+        }
+    }
+
+    public func screenWatchdogDidDetectScreenLock() {
+        if isCapturing {
+            outputSurface.blankOutput(reason: .screenLocked)
+        }
+    }
+
+    public func screenWatchdogDidDetectScreenUnlock() {
+        if isCapturing {
+            outputSurface.unblankOutput()
+        }
+    }
+
+    public func screenWatchdogDidChangeScreenParameters() {
+        Task {
+            await self.refreshApps()
+            if self.isCapturing {
+                await self.syncActiveFilter()
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ import Combine
 
 @MainActor
 public protocol RuleStoring: AnyObject {
+    var config: SafeShareConfig { get }
     func effectiveState(for bundleID: String, pid: pid_t?, windowID: CGWindowID?) -> ProtectionState
     func setApplicationRule(bundleID: String, state: ProtectionState, customDisplayName: String?)
     func setWindowOverride(windowID: CGWindowID, state: ProtectionOverride)

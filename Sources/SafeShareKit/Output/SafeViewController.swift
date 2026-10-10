@@ -76,4 +76,12 @@ public final class SafeViewController: NSObject, NSWindowDelegate, OutputSurfaci
         layerWrapper.flush()
         onClose?()
     }
+
+    public func windowDidMiniaturize(_ notification: Notification) {
+        print("[SafeViewController] Warning: Safe View window minimized. Meeting apps like Teams may pause capturing minimized windows.")
+    }
+
+    public func windowDidDeminiaturize(_ notification: Notification) {
+        print("[SafeViewController] Safe View window restored from minimization.")
+    }
 }

@@ -34,8 +34,9 @@ public struct ApplicationRowView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                // Expand/collapse chevron if multiple windows exist
-                if appGroup.allWindows.count > 1 {
+                // Expand/collapse chevron if multiple windows or instances exist
+                let isExpandable = appGroup.allWindows.count > 1 || appGroup.instances.count > 1
+                if isExpandable {
                     Button(action: { isExpanded.toggle() }) {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                             .font(.system(size: 10, weight: .bold))
@@ -52,9 +53,16 @@ public struct ApplicationRowView: View {
                     .frame(width: 20, height: 20)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(appGroup.displayName)
-                        .font(.system(size: 12, weight: .medium))
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        Text(appGroup.displayName)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                        if appGroup.instances.count > 1 {
+                            Text("(\(appGroup.instances.count) instances)")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary)
+                        }
+                    }
                     Text(appGroup.bundleIdentifier)
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -77,41 +85,56 @@ public struct ApplicationRowView: View {
             }
             .padding(.vertical, 2)
 
-            // Expanded Window Overrides
-            if isExpanded && appGroup.allWindows.count > 1 {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(appGroup.allWindows) { window in
-                        HStack(spacing: 6) {
-                            Image(systemName: "macwindow")
-                                .font(.system(size: 9))
-                                .foregroundColor(.secondary)
-                            Text(window.title.isEmpty ? "Untitled Window" : window.title)
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
-
-                            Spacer()
-
-                            let currentOverride = getWindowOverride(window.windowID)
-                            Menu {
-                                Button("Inherit (\(isProtected ? "Protected" : "Visible"))") {
-                                    onWindowOverrideChange(window.windowID, .inherit)
-                                }
-                                Button("Force Visible") {
-                                    onWindowOverrideChange(window.windowID, .forceVisible)
-                                }
-                                Button("Force Protected") {
-                                    onWindowOverrideChange(window.windowID, .forceProtect)
-                                }
-                            } label: {
-                                Text(overrideLabel(currentOverride))
-                                    .font(.system(size: 9))
+            // Expanded Window & Instance Overrides
+            if isExpanded && (appGroup.allWindows.count > 1 || appGroup.instances.count > 1) {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(appGroup.instances) { instance in
+                        if appGroup.instances.count > 1 {
+                            HStack {
+                                Text("Process (PID: \(instance.processID))")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(instance.windows.count) window(s)")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.secondary)
                             }
-                            .menuStyle(.borderlessButton)
-                            .frame(width: 90)
+                            .padding(.leading, 26)
                         }
-                        .padding(.leading, 26)
-                        .padding(.vertical, 1)
+
+                        ForEach(instance.windows) { window in
+                            HStack(spacing: 6) {
+                                Image(systemName: "macwindow")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                                Text(window.title.isEmpty ? "Untitled Window" : window.title)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                let currentOverride = getWindowOverride(window.windowID)
+                                Menu {
+                                    Button("Inherit (\(isProtected ? "Protected" : "Visible"))") {
+                                        onWindowOverrideChange(window.windowID, .inherit)
+                                    }
+                                    Button("Force Visible") {
+                                        onWindowOverrideChange(window.windowID, .forceVisible)
+                                    }
+                                    Button("Force Protected") {
+                                        onWindowOverrideChange(window.windowID, .forceProtect)
+                                    }
+                                } label: {
+                                    Text(overrideLabel(currentOverride))
+                                        .font(.system(size: 9))
+                                }
+                                .menuStyle(.borderlessButton)
+                                .frame(width: 90)
+                            }
+                            .padding(.leading, appGroup.instances.count > 1 ? 34 : 26)
+                            .padding(.vertical, 1)
+                        }
                     }
                 }
                 .padding(.vertical, 2)

@@ -7,12 +7,14 @@ public struct SettingsView: View {
     @State private var targetFPS: Int
     @State private var showCursor: Bool
     @State private var failClosed: Bool
+    @State private var excludeNotificationCenter: Bool
 
     public init(ruleStore: RuleStore) {
         self.ruleStore = ruleStore
         _targetFPS = State(initialValue: ruleStore.config.streamSettings.targetFPS)
         _showCursor = State(initialValue: ruleStore.config.streamSettings.showCursor)
         _failClosed = State(initialValue: ruleStore.config.streamSettings.failClosedBlanking)
+        _excludeNotificationCenter = State(initialValue: ruleStore.config.streamSettings.excludeNotificationCenter)
     }
 
     public var body: some View {
@@ -76,6 +78,13 @@ public struct SettingsView: View {
                 Text("Automatically blanks the Safe View window during filter changes, screen lock, or permission updates to prevent accidental leaks.")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+
+                Toggle("Auto-Hide System Notifications (Notification Center)", isOn: $excludeNotificationCenter)
+                    .onChange(of: excludeNotificationCenter) { _, newValue in
+                        var settings = ruleStore.config.streamSettings
+                        settings.excludeNotificationCenter = newValue
+                        ruleStore.updateStreamSettings(settings)
+                    }
             }
 
             Divider()

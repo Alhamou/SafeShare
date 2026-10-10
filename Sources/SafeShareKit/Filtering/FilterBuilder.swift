@@ -23,11 +23,16 @@ public final class FilterBuilder: FilterBuilding {
     ) throws -> SCContentFilter {
         var excludingApps: [SCRunningApplication] = []
         var exceptingWindows: [SCWindow] = []
-        var excludingSpecificWindows: [SCWindow] = []
 
         // 1. Mandatory Self-Exclusion: Exclude SafeShare to prevent recursive mirroring
         if let selfApp = snapshot.applications.first(where: { $0.processID == selfPID }) {
             excludingApps.append(selfApp)
+        }
+
+        // 1b. Exclude Notification Center if configured to prevent message leaks
+        if rules.config.streamSettings.excludeNotificationCenter,
+           let notifApp = snapshot.applications.first(where: { $0.bundleIdentifier == "com.apple.notificationcenterui" }) {
+            excludingApps.append(notifApp)
         }
 
         // 2. Resolve rules for all other applications
@@ -38,7 +43,7 @@ public final class FilterBuilder: FilterBuilding {
 
             if appState == .protected {
                 excludingApps.append(app)
-                // Check if any window has an explicit visible override (.forceVisible)
+                // App is protected: check if any window has an explicit visible override (.forceVisible)
                 for window in appWindows {
                     let winState = rules.effectiveState(for: bundleID, pid: app.processID, windowID: window.windowID)
                     if winState == .unprotected {
@@ -46,26 +51,25 @@ public final class FilterBuilder: FilterBuilding {
                     }
                 }
             } else {
-                // Application is unprotected, check if any specific window is protected
-                for window in appWindows {
-                    let winState = rules.effectiveState(for: bundleID, pid: app.processID, windowID: window.windowID)
-                    if winState == .protected {
-                        excludingSpecificWindows.append(window)
+                // App is unprotected: check if any specific window is protected (.forceProtect)
+                let protectedWindows = appWindows.filter {
+                    rules.effectiveState(for: bundleID, pid: app.processID, windowID: $0.windowID) == .protected
+                }
+                if !protectedWindows.isEmpty {
+                    // Exclude the application, but except (keep visible) all its other windows
+                    excludingApps.append(app)
+                    for window in appWindows where !protectedWindows.contains(where: { $0.windowID == window.windowID }) {
+                        exceptingWindows.append(window)
                     }
                 }
             }
         }
 
-        // 3. Construct filter
-        if #available(macOS 14.0, *), !excludingSpecificWindows.isEmpty, excludingApps.isEmpty {
-            // When only individual windows are excluded and no full applications are excluded
-            return SCContentFilter(display: display, excludingWindows: excludingSpecificWindows)
-        } else {
-            return SCContentFilter(
-                display: display,
-                excludingApplications: excludingApps,
-                exceptingWindows: exceptingWindows
-            )
-        }
+        // 3. Construct unified SCContentFilter
+        return SCContentFilter(
+            display: display,
+            excludingApplications: excludingApps,
+            exceptingWindows: exceptingWindows
+        )
     }
 }
