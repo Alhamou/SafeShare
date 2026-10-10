@@ -12,8 +12,11 @@ public struct SettingsView: View {
     @State private var excludeNotificationCenter: Bool
     @State private var selectedDisplayID: UInt32
 
-    public init(coordinator: AppStateCoordinator) {
+    public let onBack: (() -> Void)?
+
+    public init(coordinator: AppStateCoordinator, onBack: (() -> Void)? = nil) {
         self.coordinator = coordinator
+        self.onBack = onBack
         let settings = coordinator.ruleStore.config.streamSettings
         _targetFPS = State(initialValue: settings.targetFPS)
         _showCursor = State(initialValue: settings.showCursor)
@@ -24,20 +27,30 @@ public struct SettingsView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 // Header
-                HStack(spacing: 12) {
-                    Image(systemName: "shield.checkered")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.purple)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("SafeShare Preferences")
-                            .font(.headline)
+                HStack(spacing: 8) {
+                    if let back = onBack {
+                        Button(action: back) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                Text("Back")
+                            }
+                            .font(.system(size: 12, weight: .semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Back to applications list")
+                    } else {
+                        Image(systemName: "shield.checkered")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.purple)
+                            .accessibilityHidden(true)
+                    }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Preferences")
+                            .font(.system(size: 14, weight: .bold))
                             .accessibilityAddTraits(.isHeader)
-                        Text("Hardware filtering, stream performance, and system integration")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                     Spacer()
                 }
@@ -203,15 +216,19 @@ public struct SettingsView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Button("Done") {
-                        dismiss()
+                        if let back = onBack {
+                            back()
+                        } else {
+                            dismiss()
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .accessibilityLabel("Close settings panel")
                 }
             }
-            .padding(20)
+            .padding(14)
         }
-        .frame(width: 480, height: 520)
+        .frame(width: 360, height: 500)
     }
 }

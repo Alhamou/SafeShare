@@ -28,6 +28,21 @@ public struct MenuBarExtraView: View {
     }
 
     public var body: some View {
+        Group {
+            if isShowingSettings {
+                SettingsView(coordinator: coordinator, onBack: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isShowingSettings = false
+                    }
+                })
+            } else {
+                mainContentView
+            }
+        }
+        .frame(width: 360, height: 500)
+    }
+
+    private var mainContentView: some View {
         VStack(spacing: 0) {
             // Header
             HStack(spacing: 8) {
@@ -54,7 +69,11 @@ public struct MenuBarExtraView: View {
                     .cornerRadius(4)
                 }
 
-                Button(action: { isShowingSettings = true }) {
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isShowingSettings = true
+                    }
+                }) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 12))
                 }
@@ -267,10 +286,6 @@ public struct MenuBarExtraView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(Color(NSColor.windowBackgroundColor))
-        }
-        .frame(width: 360)
-        .sheet(isPresented: $isShowingSettings) {
-            SettingsView(coordinator: coordinator)
         }
     }
 
