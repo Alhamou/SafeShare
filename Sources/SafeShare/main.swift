@@ -90,8 +90,16 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
         // Remove any previous monitor
         removeGlobalMonitor()
 
-        // Show popover cleanly without manually overriding key-window state
+        // Activate the application so the popover opens in active focused mode
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Show popover
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+
+        // Ensure the popover window is key so controls and buttons are active immediately
+        if let window = popover.contentViewController?.view.window {
+            window.makeKey()
+        }
 
         // Install global monitor: dismiss cleanly when user clicks anywhere outside
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
