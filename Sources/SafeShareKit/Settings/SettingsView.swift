@@ -26,8 +26,8 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        ScrollView([.vertical], showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 14) {
                 // Header
                 HStack(spacing: 8) {
                     if let back = onBack {
@@ -42,16 +42,15 @@ public struct SettingsView: View {
                         .accessibilityLabel("Back to applications list")
                     } else {
                         Image(systemName: "shield.checkered")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundColor(.purple)
                             .accessibilityHidden(true)
                     }
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Preferences")
-                            .font(.system(size: 14, weight: .bold))
-                            .accessibilityAddTraits(.isHeader)
-                    }
+                    Text("Preferences")
+                        .font(.system(size: 14, weight: .bold))
+                        .accessibilityAddTraits(.isHeader)
+
                     Spacer()
                 }
 
@@ -73,7 +72,8 @@ public struct SettingsView: View {
                             Image(systemName: "display")
                                 .foregroundColor(.secondary)
                             Text("Main Display (\(d.width) × \(d.height))")
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
+                                .lineLimit(1)
                             Spacer()
                             Text("Primary")
                                 .font(.caption2)
@@ -121,9 +121,9 @@ public struct SettingsView: View {
                             .foregroundColor(.secondary)
 
                         Picker("Target FPS", selection: $targetFPS) {
-                            Text("15 FPS (Battery Saver)").tag(15)
+                            Text("15 FPS").tag(15)
                             Text("30 FPS (Standard)").tag(30)
-                            Text("60 FPS (Smooth)").tag(60)
+                            Text("60 FPS").tag(60)
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
@@ -133,6 +133,11 @@ public struct SettingsView: View {
                             coordinator.ruleStore.updateStreamSettings(settings)
                         }
                         .accessibilityLabel("Target frame rate")
+
+                        Text("30 FPS is standard for meeting sharing. 15 FPS conserves battery.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Toggle("Include Mouse Pointer in Stream", isOn: $showCursor)
@@ -160,17 +165,24 @@ public struct SettingsView: View {
                             coordinator.ruleStore.updateStreamSettings(settings)
                         }
                         .accessibilityLabel("Fail-closed privacy blanking")
-                    Text("Instantly blacks out the Safe View window during filter changes, screen lock, or permission updates to prevent accidental leaks.")
+
+                    Text("Instantly blacks out Safe View during screen lock, sleep, or permission updates to prevent accidental leaks.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    Toggle("Auto-Hide System Notifications (Notification Center)", isOn: $excludeNotificationCenter)
+                    Toggle("Hide Notification Center Banners", isOn: $excludeNotificationCenter)
                         .onChange(of: excludeNotificationCenter) { _, newValue in
                             var settings = coordinator.ruleStore.config.streamSettings
                             settings.excludeNotificationCenter = newValue
                             coordinator.ruleStore.updateStreamSettings(settings)
                         }
                         .accessibilityLabel("Exclude macOS Notification Center banners from capture")
+
+                    Text("Prevents macOS notification banners and alerts from appearing in the video stream.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Divider()
@@ -182,7 +194,7 @@ public struct SettingsView: View {
                         .bold()
                         .accessibilityAddTraits(.isHeader)
 
-                    Toggle("Launch SafeShare Automatically at Login", isOn: Binding(
+                    Toggle("Launch SafeShare at Login", isOn: Binding(
                         get: { loginManager.isEnabled },
                         set: { loginManager.setEnabled($0) }
                     ))
@@ -201,7 +213,7 @@ public struct SettingsView: View {
                     Button(role: .destructive, action: {
                         coordinator.ruleStore.resetAllRules()
                     }) {
-                        Label("Reset All Application Protection Rules", systemImage: "arrow.counterclockwise")
+                        Label("Reset All Application Rules", systemImage: "arrow.counterclockwise")
                     }
                     .buttonStyle(.bordered)
                     .accessibilityLabel("Reset all application protection rules to default")
@@ -219,6 +231,7 @@ public struct SettingsView: View {
                         if let back = onBack {
                             back()
                         } else {
+                            coordinator.isShowingSettings = false
                             dismiss()
                         }
                     }
@@ -228,7 +241,8 @@ public struct SettingsView: View {
                 }
             }
             .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: 360, height: 500)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

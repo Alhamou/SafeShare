@@ -3,7 +3,6 @@ import SwiftUI
 public struct MenuBarExtraView: View {
     @ObservedObject public var coordinator: AppStateCoordinator
     @State private var searchText: String = ""
-    @State private var isShowingSettings: Bool = false
 
     public init(coordinator: AppStateCoordinator) {
         self.coordinator = coordinator
@@ -29,17 +28,17 @@ public struct MenuBarExtraView: View {
 
     public var body: some View {
         Group {
-            if isShowingSettings {
+            if coordinator.isShowingSettings {
                 SettingsView(coordinator: coordinator, onBack: {
                     withAnimation(.easeInOut(duration: 0.15)) {
-                        isShowingSettings = false
+                        coordinator.isShowingSettings = false
                     }
                 })
             } else {
                 mainContentView
             }
         }
-        .frame(width: 360, height: 500)
+        .frame(width: 380, height: 520)
     }
 
     private var mainContentView: some View {
@@ -71,7 +70,7 @@ public struct MenuBarExtraView: View {
 
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.15)) {
-                        isShowingSettings = true
+                        coordinator.isShowingSettings = true
                     }
                 }) {
                     Image(systemName: "gearshape")
@@ -257,7 +256,7 @@ public struct MenuBarExtraView: View {
                 }
                 .padding(.vertical, 6)
             }
-            .frame(height: 320)
+            .frame(height: 340)
 
             Divider()
 

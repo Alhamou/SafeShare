@@ -12,6 +12,11 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     @Published public private(set) var applicationGroups: [ApplicationGroup] = []
     @Published public private(set) var isSafeViewWindowOpen: Bool = false
     @Published public private(set) var hasScreenRecordingPermission: Bool = false
+    @Published public var isShowingSettings: Bool = false
+
+    public func resetNavigationState() {
+        isShowingSettings = false
+    }
 
     public let permissions: PermissionsCoordinator
     public let scanner: AppScanner

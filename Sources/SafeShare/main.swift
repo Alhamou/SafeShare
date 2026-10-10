@@ -3,6 +3,7 @@ import SwiftUI
 import SafeShareKit
 
 @main
+@MainActor
 final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
@@ -25,7 +26,7 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
 
         // Setup NSPopover hosting MenuBarExtraView
         let popover = NSPopover()
-        popover.contentSize = NSSize(width: 360, height: 500)
+        popover.contentSize = NSSize(width: 380, height: 520)
         popover.behavior = .transient
         popover.delegate = self
         popover.contentViewController = NSHostingController(
@@ -48,7 +49,9 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.closePopover()
+            MainActor.assumeIsolated {
+                self?.closePopover()
+            }
         }
     }
 
@@ -75,13 +78,16 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
 
         // Install global monitor: close as soon as user clicks anywhere outside
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.closePopover()
+            MainActor.assumeIsolated {
+                self?.closePopover()
+            }
         }
     }
 
     private func closePopover() {
         guard let popover = popover, popover.isShown else { return }
         popover.performClose(nil)
+        coordinator?.resetNavigationState()
         if let monitor = globalEventMonitor {
             NSEvent.removeMonitor(monitor)
             globalEventMonitor = nil
@@ -90,6 +96,7 @@ final class SafeShareAppDelegate: NSObject, NSApplicationDelegate, NSPopoverDele
 
     // MARK: - NSPopoverDelegate
     func popoverDidClose(_ notification: Notification) {
+        coordinator?.resetNavigationState()
         if let monitor = globalEventMonitor {
             NSEvent.removeMonitor(monitor)
             globalEventMonitor = nil
