@@ -1,0 +1,36 @@
+name: SafeShare CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app || true
+
+      - name: Verify Swift Toolchain
+        run: swift --version
+
+      - name: Run Test Suite
+        run: swift test --parallel
+
+      - name: Build Application Bundle
+        run: ./scripts/build_app.sh
+
+      - name: Build Installer DMG
+        run: ./scripts/package_dmg.sh
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SafeShare-Installer
+          path: build/SafeShare-1.0.0.dmg
+          if-no-files-found: error
