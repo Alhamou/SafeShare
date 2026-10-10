@@ -73,17 +73,23 @@ public struct SettingsView: View {
                         .background(Color(NSColor.controlBackgroundColor))
                         .cornerRadius(6)
                     } else {
-                        Picker("Select Display to Capture", selection: $selectedDisplayID) {
-                            ForEach(coordinator.scanner.displays, id: \.displayID) { display in
-                                Text("Display \(display.displayID) (\(display.width) × \(display.height))")
-                                    .tag(display.displayID)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Active Display:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Picker("Display", selection: $selectedDisplayID) {
+                                ForEach(coordinator.scanner.displays, id: \.displayID) { display in
+                                    Text("Display \(display.displayID) (\(display.width) × \(display.height))")
+                                        .tag(display.displayID)
+                                }
                             }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .onChange(of: selectedDisplayID) { _, newValue in
+                                coordinator.setTargetDisplay(displayID: newValue)
+                            }
+                            .accessibilityLabel("Select physical display to capture")
                         }
-                        .pickerStyle(.menu)
-                        .onChange(of: selectedDisplayID) { _, newValue in
-                            coordinator.setTargetDisplay(displayID: newValue)
-                        }
-                        .accessibilityLabel("Select physical display to capture")
                     }
                 }
 
@@ -96,16 +102,18 @@ public struct SettingsView: View {
                         .bold()
                         .accessibilityAddTraits(.isHeader)
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Frame Rate:")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Target Frame Rate:")
                             .font(.caption)
                             .foregroundColor(.secondary)
+
                         Picker("Target FPS", selection: $targetFPS) {
                             Text("15 FPS (Battery Saver)").tag(15)
                             Text("30 FPS (Standard)").tag(30)
                             Text("60 FPS (Smooth)").tag(60)
                         }
                         .pickerStyle(.segmented)
+                        .labelsHidden()
                         .onChange(of: targetFPS) { _, newValue in
                             var settings = coordinator.ruleStore.config.streamSettings
                             settings.targetFPS = newValue
