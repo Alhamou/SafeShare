@@ -19,9 +19,16 @@ fi
 echo "==> Packaging into ${APP_DIR}..."
 rm -rf "${APP_DIR}"
 mkdir -p "${MACOS_DIR}"
+RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+mkdir -p "${RESOURCES_DIR}"
 
 cp "${BIN_PATH}" "${MACOS_DIR}/SafeShare"
 chmod +x "${MACOS_DIR}/SafeShare"
+
+if [[ -f "${ROOT_DIR}/Resources/AppIcon.icns" ]]; then
+    echo "==> Copying AppIcon.icns into bundle..."
+    cp "${ROOT_DIR}/Resources/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+fi
 
 cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -42,6 +49,10 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
     <string>1.0.0</string>
     <key>CFBundleExecutable</key>
     <string>SafeShare</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
