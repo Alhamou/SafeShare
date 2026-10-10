@@ -54,8 +54,8 @@ cat << 'EOF' > "${CONTENTS_DIR}/Info.plist"
 </plist>
 EOF
 
-echo "==> Performing ad-hoc code signature..."
-codesign --force --deep --sign - --identifier "com.safeshare.app" "${APP_DIR}"
+echo "==> Performing ad-hoc code signature with stable designated requirement..."
+codesign --force --deep --sign - --identifier "com.safeshare.app" -r='designated => identifier "com.safeshare.app"' "${APP_DIR}"
 
 echo "==> Successfully created ${APP_DIR}!"
 echo "Run via: open ${APP_DIR}"
