@@ -33,6 +33,8 @@ public final class SafeViewController: NSObject, NSWindowDelegate, OutputSurfaci
             backing: .buffered,
             defer: false
         )
+        newWindow.isReleasedWhenClosed = false
+        newWindow.animationBehavior = .none
         newWindow.title = "SafeShare — Safe View (Share this window in Teams)"
         newWindow.sharingType = .readOnly
         newWindow.collectionBehavior = [.fullScreenAuxiliary, .participatesInCycle]
@@ -51,7 +53,9 @@ public final class SafeViewController: NSObject, NSWindowDelegate, OutputSurfaci
     }
 
     public func closeSafeView() {
-        window?.close()
+        if let win = window {
+            win.close()
+        }
         window = nil
         hostingView = nil
         layerWrapper.flush()
@@ -71,10 +75,12 @@ public final class SafeViewController: NSObject, NSWindowDelegate, OutputSurfaci
 
     // MARK: - NSWindowDelegate
     public func windowWillClose(_ notification: Notification) {
-        window = nil
-        hostingView = nil
-        layerWrapper.flush()
         onClose?()
+        DispatchQueue.main.async { [weak self] in
+            self?.window = nil
+            self?.hostingView = nil
+            self?.layerWrapper.flush()
+        }
     }
 
     public func windowDidMiniaturize(_ notification: Notification) {
