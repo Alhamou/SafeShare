@@ -106,7 +106,7 @@ SafeShare solves this with a **hardware-filtered desktop preview stream** called
 
 | Shortcut | Action |
 | :--- | :--- |
-| `⌘ + Shift + S` | Toggle Safe View Stream (Start / Stop) |
+| `⌘ + Shift + S` | Toggle Safe View Stream (Start / Stop) — while the SafeShare panel is open |
 | `⌘ + ,` | Open SafeShare Preferences |
 | `⌘ + Q` | Quit SafeShare |
 

@@ -254,7 +254,7 @@ public struct MenuBarExtraView: View {
                                         coordinator.toggleProtection(bundleID: group.bundleIdentifier)
                                     },
                                     onWindowOverrideChange: { winID, override in
-                                        coordinator.setWindowOverride(windowID: winID, state: override)
+                                        coordinator.setWindowOverride(windowID: winID, state: override, bundleID: group.bundleIdentifier)
                                     },
                                     getWindowOverride: { winID in
                                         coordinator.ruleStore.windowOverride(for: winID)
@@ -281,7 +281,7 @@ public struct MenuBarExtraView: View {
                                     coordinator.toggleProtection(bundleID: group.bundleIdentifier)
                                 },
                                 onWindowOverrideChange: { winID, override in
-                                    coordinator.setWindowOverride(windowID: winID, state: override)
+                                    coordinator.setWindowOverride(windowID: winID, state: override, bundleID: group.bundleIdentifier)
                                 },
                                 getWindowOverride: { winID in
                                     coordinator.ruleStore.windowOverride(for: winID)

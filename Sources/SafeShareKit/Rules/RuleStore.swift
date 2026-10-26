@@ -20,6 +20,8 @@ public final class RuleStore: ObservableObject, RuleStoring {
     // In-memory runtime overrides (Session-only, not persisted to disk)
     @Published public private(set) var windowOverrides: [CGWindowID: ProtectionOverride] = [:]
     @Published public private(set) var instanceOverrides: [pid_t: ProtectionState] = [:]
+    /// Which bundle each overridden window belongs to, so overrides can be reset per app.
+    private var windowOverrideOwners: [CGWindowID: String] = [:]
 
     private let persistence: ConfigPersisting
     private var cancellables = Set<AnyCancellable>()
@@ -93,10 +95,20 @@ public final class RuleStore: ObservableObject, RuleStoring {
     }
 
     public func setWindowOverride(windowID: CGWindowID, state: ProtectionOverride) {
+        setWindowOverride(windowID: windowID, state: state, bundleID: nil)
+    }
+
+    /// Sets a window override and records the owning bundle (when known) so that
+    /// `resetWindowOverrides(for:)` can later remove exactly this app's overrides.
+    public func setWindowOverride(windowID: CGWindowID, state: ProtectionOverride, bundleID: String?) {
         if state == .inherit {
             windowOverrides.removeValue(forKey: windowID)
+            windowOverrideOwners.removeValue(forKey: windowID)
         } else {
             windowOverrides[windowID] = state
+            if let bundleID = bundleID {
+                windowOverrideOwners[windowID] = bundleID
+            }
         }
     }
 
@@ -109,8 +121,12 @@ public final class RuleStore: ObservableObject, RuleStoring {
     }
 
     public func resetWindowOverrides(for bundleID: String) {
-        // Purge overrides for this bundle's windows
-        windowOverrides.removeAll()
+        // Purge only the overrides recorded for this bundle's windows; other apps keep theirs.
+        let owned = windowOverrideOwners.filter { $0.value == bundleID }.map(\.key)
+        for windowID in owned {
+            windowOverrides.removeValue(forKey: windowID)
+            windowOverrideOwners.removeValue(forKey: windowID)
+        }
     }
 
     public func updateStreamSettings(_ settings: StreamSettings) {
@@ -126,6 +142,7 @@ public final class RuleStore: ObservableObject, RuleStoring {
     public func resetAllRules() {
         config.applicationRules.removeAll()
         windowOverrides.removeAll()
+        windowOverrideOwners.removeAll()
         instanceOverrides.removeAll()
         save()
     }

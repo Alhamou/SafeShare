@@ -5,6 +5,7 @@ import CoreMedia
 public enum PrivacyBlankReason: String, Sendable {
     case filterTransition = "Updating Filter Rules..."
     case screenLocked = "Display Locked"
+    case screenAsleep = "Display Asleep"
     case permissionRevoked = "Permission Revoked"
     case userPaused = "Stream Paused"
 }
@@ -33,6 +34,12 @@ public final class SafeViewDisplayLayerWrapper: @unchecked Sendable {
     }
 
     public func enqueue(_ sampleBuffer: CMSampleBuffer) {
+        // The layer silently stops rendering once it enters the failed state or after the
+        // system suspends decoding (display sleep, occlusion). Apple's contract is to call
+        // flush() before enqueueing again; without it the window freezes on the last frame.
+        if displayLayer.status == .failed || displayLayer.requiresFlushToResumeDecoding {
+            displayLayer.flush()
+        }
         displayLayer.enqueue(sampleBuffer)
     }
 
@@ -99,8 +106,15 @@ public final class SafeViewHostingNSView: NSView {
         CATransaction.commit()
     }
 
+    public var isPrivacyBlanked: Bool {
+        !privacyOverlay.isHidden
+    }
+
     public func showPrivacyBlank(reason: PrivacyBlankReason) {
+        // Frames keep arriving while blanked; flushing once is not enough. Hide the video
+        // layer itself so nothing captured can reach viewers until we unblank.
         layerWrapper.flush()
+        layerWrapper.displayLayer.isHidden = true
         privacyOverlay.stringValue = "🛡️ SafeShare Privacy Blank: \(reason.rawValue)"
         privacyOverlay.isHidden = false
         self.layer?.backgroundColor = NSColor(calibratedRed: 0.04, green: 0.08, blue: 0.18, alpha: 1.0).cgColor
@@ -108,6 +122,7 @@ public final class SafeViewHostingNSView: NSView {
 
     public func hidePrivacyBlank() {
         privacyOverlay.isHidden = true
+        layerWrapper.displayLayer.isHidden = false
         self.layer?.backgroundColor = CGColor(gray: 0.05, alpha: 1.0)
     }
 

@@ -71,7 +71,9 @@ public final class SafeViewController: NSObject, NSWindowDelegate, OutputSurfaci
     }
 
     public func closeSafeView() {
-        if let win = window {
+        // `close()` re-posts willClose even on an already closed window; only close a live one
+        // (the user may have closed it themselves, which is what triggered this stop).
+        if let win = window, win.isVisible {
             win.close()
         }
         window = nil

@@ -8,7 +8,9 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     @Published public private(set) var isCapturing: Bool = false
     @Published public private(set) var statusMessage: String = "Ready"
     @Published public private(set) var fps: Double = 0.0
-    @Published public private(set) var frameCount: Int = 0
+    /// Total frames rendered this session. Updated together with `fps` once per second;
+    /// publishing it per frame re-rendered the whole popover up to 60 times a second.
+    public private(set) var frameCount: Int = 0
     @Published public private(set) var applicationGroups: [ApplicationGroup] = []
     @Published public private(set) var isSafeViewWindowOpen: Bool = false
     @Published public private(set) var hasScreenRecordingPermission: Bool = false
@@ -32,6 +34,7 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     private var cancellables = Set<AnyCancellable>()
     private var lastFPSUpdateTime = Date()
     private var framesSinceLastUpdate = 0
+    private var blankState = PrivacyBlankState()
     private let selfPID: pid_t
 
     public init(
@@ -157,8 +160,8 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         statusMessage = "\(bundleID) is now \(newState.rawValue.uppercased())"
     }
 
-    public func setWindowOverride(windowID: CGWindowID, state: ProtectionOverride) {
-        ruleStore.setWindowOverride(windowID: windowID, state: state)
+    public func setWindowOverride(windowID: CGWindowID, state: ProtectionOverride, bundleID: String? = nil) {
+        ruleStore.setWindowOverride(windowID: windowID, state: state, bundleID: bundleID)
         Task {
             await syncActiveFilter()
         }
@@ -229,6 +232,13 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
 
             try await captureEngine.startCapture(display: display, filter: filter, config: config)
             self.isCapturing = true
+            // A previous failure or lock may have left the output blanked; the new stream is live.
+            self.blankState.clearAll()
+            self.outputSurface.unblankOutput()
+            self.frameCount = 0
+            self.framesSinceLastUpdate = 0
+            self.fps = 0.0
+            self.lastFPSUpdateTime = Date()
             self.statusMessage = "Safe View live on Display \(display.displayID) at \(config.targetFPS) FPS (\(config.width) × \(config.height) px)"
         } catch {
             self.statusMessage = "Failed to start Safe View: \(error.localizedDescription)"
@@ -240,9 +250,12 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             try await captureEngine.stopCapture()
             self.isCapturing = false
             self.statusMessage = "Safe View stopped"
-            outputSurface.hideSafeView()
+            // Stopping is deliberate: close the window outright so the meeting app drops the
+            // share and nothing lingers on screen. A fresh window is created on the next start.
+            outputSurface.closeSafeView()
             self.isSafeViewWindowOpen = false
             self.fps = 0.0
+            self.blankState.clearAll()
         } catch {
             self.statusMessage = "Error stopping stream: \(error.localizedDescription)"
         }
@@ -317,12 +330,12 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.frameCount += 1
             self.framesSinceLastUpdate += 1
 
             let now = Date()
             let elapsed = now.timeIntervalSince(self.lastFPSUpdateTime)
             if elapsed >= 1.0 {
+                self.frameCount += self.framesSinceLastUpdate
                 self.fps = Double(self.framesSinceLastUpdate) / elapsed
                 self.framesSinceLastUpdate = 0
                 self.lastFPSUpdateTime = now
@@ -334,40 +347,59 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.isCapturing = false
+            self.fps = 0.0
             self.statusMessage = "Capture failed: \(error.localizedDescription)"
-            self.outputSurface.blankOutput(reason: .userPaused)
+            self.raiseBlank(.userPaused)
         }
     }
 
     public nonisolated func captureEngineNeedsPrivacyBlanking(_ engine: CaptureEngining) {
         DispatchQueue.main.async { [weak self] in
-            self?.outputSurface.blankOutput(reason: .filterTransition)
+            self?.raiseBlank(.filterTransition)
+        }
+    }
+
+    // MARK: - Privacy blanking
+
+    /// "Fail-Closed Privacy Blanking" preference: blank on lock/sleep only when enabled.
+    private var isFailClosedBlankingEnabled: Bool {
+        ruleStore.config.streamSettings.failClosedBlanking
+    }
+
+    private func raiseBlank(_ reason: PrivacyBlankReason) {
+        let shown = blankState.raise(reason)
+        outputSurface.blankOutput(reason: shown)
+    }
+
+    /// Clears one reason; the output stays blanked while any other reason is still active
+    /// (e.g. display woke up but the session is still locked).
+    private func clearBlank(_ reason: PrivacyBlankReason) {
+        if let remaining = blankState.clear(reason) {
+            outputSurface.blankOutput(reason: remaining)
+        } else {
+            outputSurface.unblankOutput()
         }
     }
 
     // MARK: - ScreenWatchdogDelegate
     public func screenWatchdogDidDetectScreenSleep() {
-        if isCapturing {
-            outputSurface.blankOutput(reason: .screenLocked)
-        }
+        guard isCapturing, isFailClosedBlankingEnabled else { return }
+        raiseBlank(.screenAsleep)
     }
 
     public func screenWatchdogDidDetectScreenWake() {
-        if isCapturing {
-            outputSurface.unblankOutput()
-        }
+        guard isCapturing else { return }
+        clearBlank(.screenAsleep)
     }
 
     public func screenWatchdogDidDetectScreenLock() {
-        if isCapturing {
-            outputSurface.blankOutput(reason: .screenLocked)
-        }
+        guard isCapturing, isFailClosedBlankingEnabled else { return }
+        raiseBlank(.screenLocked)
     }
 
     public func screenWatchdogDidDetectScreenUnlock() {
-        if isCapturing {
-            outputSurface.unblankOutput()
-        }
+        guard isCapturing else { return }
+        clearBlank(.screenLocked)
     }
 
     public func screenWatchdogDidChangeScreenParameters() {

@@ -79,11 +79,17 @@ public final class FilterBuilder: FilterBuilding {
             }
         }
 
-        // 3. Construct unified SCContentFilter
+        // 3. Construct unified SCContentFilter. An app can be collected twice (e.g. Notification
+        //    Center via the toggle *and* via a rule), so de-duplicate before handing over.
+        var seenPIDs = Set<pid_t>()
+        let uniqueApps = excludingApps.filter { seenPIDs.insert($0.processID).inserted }
+        var seenWindows = Set<CGWindowID>()
+        let uniqueWindows = exceptingWindows.filter { seenWindows.insert($0.windowID).inserted }
+
         return SCContentFilter(
             display: display,
-            excludingApplications: excludingApps,
-            exceptingWindows: exceptingWindows
+            excludingApplications: uniqueApps,
+            exceptingWindows: uniqueWindows
         )
     }
 }
