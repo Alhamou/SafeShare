@@ -223,7 +223,7 @@ public struct SettingsView: View {
 
                 // Footer
                 HStack {
-                    Text("SafeShare v1.0.0 (Open Source / MIT)")
+                    Text("SafeShare v1.1.0 (Open Source / MIT)")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Spacer()

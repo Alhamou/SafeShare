@@ -115,7 +115,7 @@ SafeShare solves this with a **hardware-filtered desktop preview stream** called
 ## 📦 Installation
 
 ### Option 1: DMG Installer (Recommended)
-Download the latest `SafeShare-1.0.0.dmg` from the [Releases](https://github.com/Alhamou/SafeShare/releases) page, open it, and drag **SafeShare.app** into your `/Applications` folder.
+Download the latest `SafeShare-1.1.0.dmg` from the [Releases](https://github.com/Alhamou/SafeShare/releases) page, open it, and drag **SafeShare.app** into your `/Applications` folder.
 
 ### Option 2: Homebrew Cask
 ```bash

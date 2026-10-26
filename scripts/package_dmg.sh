@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
 APP_PATH="${BUILD_DIR}/SafeShare.app"
-DMG_NAME="SafeShare-1.0.0.dmg"
+DMG_NAME="SafeShare-1.1.0.dmg"
 DMG_PATH="${BUILD_DIR}/${DMG_NAME}"
 STAGING_DIR="${BUILD_DIR}/dmg_staging"
 
