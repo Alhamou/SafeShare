@@ -12,6 +12,8 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     @Published public private(set) var applicationGroups: [ApplicationGroup] = []
     @Published public private(set) var isSafeViewWindowOpen: Bool = false
     @Published public private(set) var hasScreenRecordingPermission: Bool = false
+    /// Resolution viewers actually receive from the Safe View window (nil when not streaming).
+    @Published public private(set) var outputMetrics: SafeViewOutputMetrics? = nil
     @Published public var isShowingSettings: Bool = false
 
     public func resetNavigationState() {
@@ -73,6 +75,9 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
                     await self?.stopSafeView()
                 }
             }
+        }
+        self.outputSurface.onOutputMetricsChange = { [weak self] metrics in
+            self?.outputMetrics = metrics
         }
 
         // Forward RuleStore mutations to update active stream
@@ -187,7 +192,12 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             return
         }
 
-        // 1. Show the Safe View window first so WindowServer registers its presence
+        // 1. Show the Safe View window first so WindowServer registers its presence.
+        //    Seed it with the geometry of the display we already know about so it opens at
+        //    a readable size with the right aspect ratio.
+        if let knownDisplay = activeDisplay {
+            applyDisplayGeometry(of: knownDisplay)
+        }
         outputSurface.showSafeView()
         self.isSafeViewWindowOpen = true
 
@@ -214,18 +224,12 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
                 selfPID: selfPID
             )
 
-            let targetFPS = ruleStore.config.streamSettings.targetFPS
-            let showCursor = ruleStore.config.streamSettings.showCursor
-            let config = CaptureConfiguration(
-                width: display.width,
-                height: display.height,
-                targetFPS: targetFPS,
-                showsCursor: showCursor
-            )
+            let pixelSize = applyDisplayGeometry(of: display)
+            let config = makeCaptureConfiguration(pixelSize: pixelSize)
 
             try await captureEngine.startCapture(display: display, filter: filter, config: config)
             self.isCapturing = true
-            self.statusMessage = "Safe View live on Display \(display.displayID) at \(targetFPS) FPS"
+            self.statusMessage = "Safe View live on Display \(display.displayID) at \(config.targetFPS) FPS (\(config.width) × \(config.height) px)"
         } catch {
             self.statusMessage = "Failed to start Safe View: \(error.localizedDescription)"
         }
@@ -247,6 +251,32 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
     public func focusSafeViewWindow() {
         outputSurface.showSafeView()
         self.isSafeViewWindowOpen = true
+    }
+
+    /// Parks the Safe View window behind all other windows without shrinking it, so the
+    /// shared picture keeps its full resolution while the presenter works.
+    public func sendSafeViewToBack() {
+        guard isSafeViewWindowOpen else { return }
+        outputSurface.sendToBack()
+    }
+
+    /// Pushes the captured display's geometry to the output window and returns the native
+    /// pixel size that the capture configuration must use.
+    @discardableResult
+    private func applyDisplayGeometry(of display: SCDisplay) -> CGSize {
+        let pointSize = DisplayGeometry.pointSize(for: display)
+        let pixelSize = DisplayGeometry.pixelSize(for: display)
+        outputSurface.applyDisplayGeometry(pointSize: pointSize, pixelSize: pixelSize)
+        return pixelSize
+    }
+
+    private func makeCaptureConfiguration(pixelSize: CGSize) -> CaptureConfiguration {
+        CaptureConfiguration(
+            width: Int(pixelSize.width),
+            height: Int(pixelSize.height),
+            targetFPS: ruleStore.config.streamSettings.targetFPS,
+            showsCursor: ruleStore.config.streamSettings.showCursor
+        )
     }
 
     private func syncActiveFilter() async {
@@ -271,17 +301,11 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
         guard isCapturing,
               let display = activeDisplay else { return }
 
-        let targetFPS = ruleStore.config.streamSettings.targetFPS
-        let showCursor = ruleStore.config.streamSettings.showCursor
-        let config = CaptureConfiguration(
-            width: display.width,
-            height: display.height,
-            targetFPS: targetFPS,
-            showsCursor: showCursor
-        )
+        let pixelSize = applyDisplayGeometry(of: display)
+        let config = makeCaptureConfiguration(pixelSize: pixelSize)
         do {
             try await captureEngine.updateConfiguration(config)
-            print("[AppStateCoordinator] Successfully synced stream configuration (FPS: \(targetFPS), Cursor: \(showCursor))")
+            print("[AppStateCoordinator] Successfully synced stream configuration (FPS: \(config.targetFPS), Cursor: \(config.showsCursor), \(config.width) × \(config.height) px)")
         } catch {
             print("[AppStateCoordinator] Failed to sync stream configuration: \(error)")
         }
@@ -351,6 +375,8 @@ public final class AppStateCoordinator: NSObject, ObservableObject, CaptureEngin
             await self.refreshApps()
             if self.isCapturing {
                 await self.syncActiveFilter()
+                // A resolution/scale change alters the native pixel size of the display.
+                await self.syncActiveConfiguration()
             }
         }
     }

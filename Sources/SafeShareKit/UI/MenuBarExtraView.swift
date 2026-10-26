@@ -165,6 +165,15 @@ public struct MenuBarExtraView: View {
                             .buttonStyle(.bordered)
                             .help("Bring Safe View window to front")
                             .accessibilityLabel("Focus Safe View window")
+
+                            Button(action: {
+                                coordinator.sendSafeViewToBack()
+                            }) {
+                                Image(systemName: "rectangle.stack")
+                            }
+                            .buttonStyle(.bordered)
+                            .help("Send Safe View behind your other windows. It keeps streaming at full size — never shrink it to get it out of the way.")
+                            .accessibilityLabel("Send Safe View window to back")
                         }
                     }
                 }
@@ -173,6 +182,21 @@ public struct MenuBarExtraView: View {
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
+
+                if coordinator.isCapturing, let metrics = coordinator.outputMetrics {
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: metrics.isDegraded ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .font(.system(size: 9))
+                        Text(metrics.isDegraded
+                             ? "Viewers receive \(metrics.summary). Enlarge the Safe View window or send it to back instead of shrinking it."
+                             : "Viewers receive \(metrics.summary)")
+                            .font(.system(size: 9))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .foregroundColor(metrics.isDegraded ? .orange : .green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(metrics.isDegraded ? "Warning: shared resolution reduced" : "Shared at full resolution")
+                }
             }
             .padding(12)
 
@@ -269,7 +293,7 @@ public struct MenuBarExtraView: View {
                 }
                 .padding(.vertical, 6)
             }
-            .frame(height: 340)
+            .frame(maxHeight: .infinity)
 
             Divider()
 

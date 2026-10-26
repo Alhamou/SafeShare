@@ -88,6 +88,8 @@ SafeShare solves this with a **hardware-filtered desktop preview stream** called
 5. Under **Window**, select **`SafeShare — Safe View`**.
 6. Present with confidence! Even if you open confidential apps, they will never appear in Teams.
 
+> **⚠️ Keep the Safe View window large.** Meeting apps share the window at its on-screen size, so shrinking it to a small corner makes text unreadable for attendees. SafeShare locks the window to the display's aspect ratio, refuses to go below 50% of the display size, shows a banner (and the exact resolution viewers receive) when it is downscaled, and offers a **Send to Back** button in the menu that parks the window behind your work at full size — the stream keeps running even when the window is covered.
+
 ### Zoom
 1. Start **Safe View** in SafeShare.
 2. In Zoom, click **Share Screen**.

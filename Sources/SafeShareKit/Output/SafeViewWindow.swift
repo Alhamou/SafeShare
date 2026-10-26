@@ -16,6 +16,12 @@ public protocol OutputSurfacing: AnyObject {
     @MainActor func blankOutput(reason: PrivacyBlankReason)
     @MainActor func unblankOutput()
     @MainActor var isVisible: Bool { get }
+    /// Tells the surface which display it mirrors so it can lock the aspect ratio, enforce a
+    /// readable minimum size and report the resolution viewers actually receive.
+    @MainActor func applyDisplayGeometry(pointSize: CGSize, pixelSize: CGSize)
+    /// Parks the window behind every other window at its current size. Meeting apps keep
+    /// capturing a covered window, so this is the safe way to get it "out of the way".
+    @MainActor func sendToBack()
 }
 
 public final class SafeViewDisplayLayerWrapper: @unchecked Sendable {
@@ -38,6 +44,10 @@ public final class SafeViewDisplayLayerWrapper: @unchecked Sendable {
 public final class SafeViewHostingNSView: NSView {
     public let layerWrapper: SafeViewDisplayLayerWrapper
     private let privacyOverlay = NSTextField(labelWithString: "")
+    private let outputHint = NSTextField(labelWithString: "")
+
+    private static let outputHintHeight: CGFloat = 24
+    private static let outputHintInset: CGFloat = 10
 
     public init(layerWrapper: SafeViewDisplayLayerWrapper) {
         self.layerWrapper = layerWrapper
@@ -53,6 +63,20 @@ public final class SafeViewHostingNSView: NSView {
         privacyOverlay.textColor = .white
         privacyOverlay.isHidden = true
         self.addSubview(privacyOverlay)
+
+        // Banner shown (to the presenter *and* to viewers) whenever the window is small
+        // enough that the shared picture is noticeably downscaled.
+        outputHint.isEditable = false
+        outputHint.isSelectable = false
+        outputHint.alignment = .center
+        outputHint.lineBreakMode = .byTruncatingTail
+        outputHint.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        outputHint.textColor = .white
+        outputHint.wantsLayer = true
+        outputHint.layer?.backgroundColor = NSColor(calibratedRed: 0.85, green: 0.45, blue: 0.05, alpha: 0.92).cgColor
+        outputHint.layer?.cornerRadius = 6
+        outputHint.isHidden = true
+        self.addSubview(outputHint)
     }
 
     required init?(coder: NSCoder) {
@@ -65,6 +89,13 @@ public final class SafeViewHostingNSView: NSView {
         CATransaction.setDisableActions(true)
         layerWrapper.displayLayer.frame = self.bounds
         privacyOverlay.frame = NSRect(x: 20, y: self.bounds.midY - 20, width: self.bounds.width - 40, height: 40)
+        let inset = Self.outputHintInset
+        outputHint.frame = NSRect(
+            x: inset,
+            y: self.bounds.height - Self.outputHintHeight - inset,
+            width: max(self.bounds.width - inset * 2, 0),
+            height: Self.outputHintHeight
+        )
         CATransaction.commit()
     }
 
@@ -78,5 +109,15 @@ public final class SafeViewHostingNSView: NSView {
     public func hidePrivacyBlank() {
         privacyOverlay.isHidden = true
         self.layer?.backgroundColor = CGColor(gray: 0.05, alpha: 1.0)
+    }
+
+    /// Shows or hides the low-resolution banner based on the latest output metrics.
+    public func updateOutputHint(_ metrics: SafeViewOutputMetrics?) {
+        guard let metrics = metrics, metrics.isDegraded else {
+            outputHint.isHidden = true
+            return
+        }
+        outputHint.stringValue = "⚠️ Viewers receive \(metrics.summary) — enlarge this window for sharper text"
+        outputHint.isHidden = false
     }
 }
